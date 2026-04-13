@@ -1,0 +1,15 @@
+{
+  "warning_channel_id": "0",
+  "auth_channel_id": "0",
+  "auth_completed_role_id": "0",
+  "acquaintance_role_id": "0",
+  "bot_role_id": "0",
+  "warning_role_1_id": "0",
+  "warning_role_2_id": "0",
+  "warning_role_3_id": "0",
+  "voice_create.enabled": true,
+  "voice_create.trigger_channel_id": "0",
+  "voice_create.category_id": "0",
+  "voice_create.auto_delete": true,
+  "voice_create.allow_duplicate": true
+}
