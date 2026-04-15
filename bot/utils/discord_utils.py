@@ -5,7 +5,7 @@ import re
 import discord
 
 
-INVALID_CHANNEL_CHARS = re.compile(r"[\\/:*?\"<>|#@]|")
+INVALID_CHANNEL_CHARS = re.compile(r"[\r\n\t]+")
 
 
 def is_admin(member: discord.abc.User) -> bool:
@@ -16,8 +16,8 @@ def is_admin(member: discord.abc.User) -> bool:
 
 
 def sanitize_channel_name(name: str) -> str:
-    sanitized = re.sub(r"[\\/:*?\"<>|#@]", "", name).strip()
-    sanitized = re.sub(r"\s+", "-", sanitized)
+    sanitized = INVALID_CHANNEL_CHARS.sub(" ", name).strip()
+    sanitized = re.sub(r"\s+", " ", sanitized)
     return sanitized[:90] or "voice-channel"
 
 
