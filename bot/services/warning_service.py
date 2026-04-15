@@ -69,7 +69,7 @@ class WarningService:
             kicked = await self.kick_member(guild.id, guild, target, actor, "경고 3회 누적")
         return WarningResult(target.id, new_count, action, actor.id if actor else None, target.id, reason, now, kicked)
 
-    async def remove_warning(self, guild: discord.Guild, target: discord.Member, actor: discord.Member, reason: str) -> WarningResult:
+    async def remove_warning(self, guild: discord.Guild, target: discord.Member, actor: discord.Member | None, reason: str, period_key: str | None = None) -> WarningResult:
         user = await self.get_or_create_user(guild.id, target.id)
         new_count = max(int(user["warning_count"]) - 1, 0)
         now = format_kst(now_kst())
@@ -81,10 +81,10 @@ class WarningService:
         refreshed = await self.db.fetchone("SELECT id FROM users WHERE discord_id = ?", (user_key,))
         await self.db.execute(
             "INSERT INTO warning_history(user_id, guild_id, action, actor_discord_id, target_discord_id, reason, total_warning_count, period_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (refreshed["id"], str(guild.id), "REMOVE", str(actor.id), str(target.id), reason, new_count, None, now),
+            (refreshed["id"], str(guild.id), "REMOVE", str(actor.id) if actor else None, str(target.id), reason, new_count, period_key, now),
         )
         await self.sync_warning_roles(guild.id, target, new_count)
-        return WarningResult(target.id, new_count, "REMOVE", actor.id, target.id, reason, now, False)
+        return WarningResult(target.id, new_count, "REMOVE", actor.id if actor else None, target.id, reason, now, False)
 
     async def handle_member_join(self, member: discord.Member) -> None:
         user = await self.get_or_create_user(member.guild.id, member.id)

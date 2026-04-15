@@ -7,7 +7,7 @@ import discord
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from bot.services.warning_service import WarningService
+from bot.services.warning_service import WarningResult, WarningService
 from bot.utils.time_utils import KST, get_notice_target_date, get_previous_period, is_auto_warning_run_time, now_kst
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,39 @@ class SchedulerService:
         """스케줄러 서비스 초기화"""
         self.bot = bot
         self.scheduler = AsyncIOScheduler(timezone=KST)
+
+    def _build_auto_warning_summary_embed(
+        self,
+        period_key: str,
+        results: list[tuple[discord.Member, WarningResult]],
+    ) -> discord.Embed:
+        embed = discord.Embed(
+            description=f"{period_key} 자동 경고 집계가 완료되었습니다.",
+            timestamp=now_kst(),
+        )
+        if not results:
+            embed.add_field(name="처리 결과", value="이번 자동 경고 대상이 없습니다.", inline=False)
+            embed.set_footer(text="소다봇 자동 경고 요약")
+            return embed
+
+        warning_1: list[str] = []
+        warning_2: list[str] = []
+        warning_3: list[str] = []
+
+        for member, result in results:
+            if result.warning_count == 1:
+                warning_1.append(member.mention)
+            elif result.warning_count == 2:
+                warning_2.append(member.mention)
+            else:
+                status = "추방 완료" if result.kicked else "추방 시도 필요"
+                warning_3.append(f"{member.mention} ({status})")
+
+        embed.add_field(name="경고 1회", value="\n".join(warning_1) if warning_1 else "-", inline=False)
+        embed.add_field(name="경고 2회", value="\n".join(warning_2) if warning_2 else "-", inline=False)
+        embed.add_field(name="경고 3회(추방자)", value="\n".join(warning_3) if warning_3 else "-", inline=False)
+        embed.set_footer(text="소다봇 자동 경고 요약")
+        return embed
 
     async def start(self) -> None:
         """APScheduler 시작 (매분 실행)"""
@@ -79,6 +112,8 @@ class SchedulerService:
         elif warning_channel is None:
             logger.warning("warning channel not found guild=%s channel_id=%s; auto warning continues without log embed", guild.id, warning_channel_id)
 
+        processed_results: list[tuple[discord.Member, WarningResult]] = []
+
         for member in guild.members:
             if member.bot:
                 continue
@@ -101,11 +136,14 @@ class SchedulerService:
                 "AUTO_ADD",
                 previous_period.key,
             )
+            processed_results.append((member, result))
             if warning_channel:
                 from bot.services.embed_service import EmbedService
                 await warning_channel.send(embed=EmbedService.warning_log("자동 경고", "SYSTEM", member.mention, result.reason, result.warning_count, result.created_at, result.kicked))
 
         await self._clear_auth_role(guild, auth_role_id)
+        if warning_channel:
+            await warning_channel.send(embed=self._build_auto_warning_summary_embed(previous_period.key, processed_results))
 
     async def _clear_auth_role(self, guild: discord.Guild, auth_role_id: int) -> None:
         if not auth_role_id:
