@@ -17,6 +17,7 @@ class WarningResult:
     action: ActionType
     actor_discord_id: int | None
     target_discord_id: int
+    target_display_name: str
     reason: str
     created_at: str
     kicked: bool = False
@@ -67,7 +68,7 @@ class WarningService:
         kicked = False
         if new_count >= 3:
             kicked = await self.kick_member(guild.id, guild, target, actor, "경고 3회 누적")
-        return WarningResult(target.id, new_count, action, actor.id if actor else None, target.id, reason, now, kicked)
+        return WarningResult(target.id, new_count, action, actor.id if actor else None, target.id, target.display_name, reason, now, kicked)
 
     async def remove_warning(self, guild: discord.Guild, target: discord.Member, actor: discord.Member | None, reason: str, period_key: str | None = None) -> WarningResult:
         user = await self.get_or_create_user(guild.id, target.id)
@@ -84,7 +85,7 @@ class WarningService:
             (refreshed["id"], str(guild.id), "REMOVE", str(actor.id) if actor else None, str(target.id), reason, new_count, period_key, now),
         )
         await self.sync_warning_roles(guild.id, target, new_count)
-        return WarningResult(target.id, new_count, "REMOVE", actor.id if actor else None, target.id, reason, now, False)
+        return WarningResult(target.id, new_count, "REMOVE", actor.id if actor else None, target.id, target.display_name, reason, now, False)
 
     async def handle_member_join(self, member: discord.Member) -> None:
         user = await self.get_or_create_user(member.guild.id, member.id)

@@ -22,7 +22,7 @@ class SchedulerService:
     def _build_auto_warning_summary_embed(
         self,
         period_key: str,
-        results: list[tuple[discord.Member, WarningResult]],
+        results: list[WarningResult],
     ) -> discord.Embed:
         embed = discord.Embed(
             description=f"{period_key} 자동 경고 집계가 완료되었습니다.",
@@ -37,14 +37,15 @@ class SchedulerService:
         warning_2: list[str] = []
         warning_3: list[str] = []
 
-        for member, result in results:
+        for result in results:
+            entry = f"{result.target_display_name} (ID: {result.target_discord_id})"
             if result.warning_count == 1:
-                warning_1.append(member.mention)
+                warning_1.append(entry)
             elif result.warning_count == 2:
-                warning_2.append(member.mention)
+                warning_2.append(entry)
             else:
                 status = "추방 완료" if result.kicked else "추방 시도 필요"
-                warning_3.append(f"{member.mention} ({status})")
+                warning_3.append(f"{entry} ({status})")
 
         embed.add_field(name="경고 1회", value="\n".join(warning_1) if warning_1 else "-", inline=False)
         embed.add_field(name="경고 2회", value="\n".join(warning_2) if warning_2 else "-", inline=False)
@@ -112,7 +113,7 @@ class SchedulerService:
         elif warning_channel is None:
             logger.warning("warning channel not found guild=%s channel_id=%s; auto warning continues without log embed", guild.id, warning_channel_id)
 
-        processed_results: list[tuple[discord.Member, WarningResult]] = []
+        processed_results: list[WarningResult] = []
 
         for member in guild.members:
             if member.bot:
@@ -136,7 +137,7 @@ class SchedulerService:
                 "AUTO_ADD",
                 previous_period.key,
             )
-            processed_results.append((member, result))
+            processed_results.append(result)
             if warning_channel:
                 from bot.services.embed_service import EmbedService
                 await warning_channel.send(embed=EmbedService.warning_log("자동 경고", "SYSTEM", member.mention, result.reason, result.warning_count, result.created_at, result.kicked))
