@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 import discord
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -58,7 +59,9 @@ class SchedulerService:
 
     async def _run_auto_warning(self, guild: discord.Guild) -> None:
         warning_service = WarningService(self.bot)
-        previous_period = get_previous_period(now_kst())
+        now = now_kst()
+        previous_period = get_previous_period(now)
+        join_exempt_before = now - timedelta(days=7)
         auth_role_id = int(self.bot.config_service.get(guild.id, "auth_completed_role_id", "0") or 0)
         acquaintance_role_id = int(self.bot.config_service.get(guild.id, "acquaintance_role_id", "0") or 0)
         bot_role_id = int(self.bot.config_service.get(guild.id, "bot_role_id", "0") or 0)
@@ -78,6 +81,8 @@ class SchedulerService:
 
         for member in guild.members:
             if member.bot:
+                continue
+            if member.joined_at and member.joined_at.astimezone(KST) > join_exempt_before:
                 continue
             role_ids = {role.id for role in member.roles}
             if auth_role_id and auth_role_id in role_ids:
