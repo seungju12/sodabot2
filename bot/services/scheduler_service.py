@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import discord
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -143,6 +143,25 @@ class SchedulerService:
                 await warning_channel.send(embed=EmbedService.warning_log("자동 경고", "SYSTEM", member.mention, result.reason, result.warning_count, result.created_at, result.kicked))
 
         await self._clear_auth_role(guild, auth_role_id)
+
+        earlier_reference = datetime(
+            previous_period.year,
+            previous_period.month,
+            previous_period.start_day,
+            12,
+            0,
+            tzinfo=KST,
+        )
+        earlier_period = get_previous_period(earlier_reference)
+        for member in guild.members:
+            if member.bot:
+                continue
+            await self.bot.auth_service.apply_consecutive_auth_reward(
+                member,
+                previous_period.key,
+                earlier_period.key,
+            )
+
         if warning_channel:
             await warning_channel.send(embed=self._build_auto_warning_summary_embed(previous_period.key, processed_results))
 

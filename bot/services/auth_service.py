@@ -4,7 +4,7 @@ import discord
 
 from bot.services.embed_service import EmbedService
 from bot.services.warning_service import WarningService
-from bot.utils.time_utils import format_kst, get_period_for_date, get_previous_period, now_kst
+from bot.utils.time_utils import format_kst, get_period_for_date, now_kst
 
 
 class AuthService:
@@ -65,14 +65,14 @@ class AuthService:
         )
         return row is not None
 
-    async def apply_consecutive_auth_reward(self, member: discord.Member) -> None:
-        current_period = get_period_for_date(now_kst())
-        previous_period = get_previous_period(now_kst())
-        if not await self.is_authenticated_for_period(member.guild.id, member.id, current_period.key):
+    async def apply_consecutive_auth_reward(self, member: discord.Member, reward_period_key: str, previous_period_key: str) -> None:
+        if not await self.is_authenticated_for_period(member.guild.id, member.id, reward_period_key):
             return
-        if not await self.is_authenticated_for_period(member.guild.id, member.id, previous_period.key):
+        if not await self.is_authenticated_for_period(member.guild.id, member.id, previous_period_key):
             return
-        if await self._already_rewarded_for_period(member.guild.id, member.id, current_period.key):
+        if await self._already_rewarded_for_period(member.guild.id, member.id, reward_period_key):
+            return
+        if await self._already_rewarded_for_period(member.guild.id, member.id, previous_period_key):
             return
         user = await self.warning_service.get_or_create_user(member.guild.id, member.id)
         if int(user["warning_count"]) <= 0:
@@ -82,7 +82,7 @@ class AuthService:
             member,
             None,
             self.AUTH_STREAK_REWARD_REASON,
-            current_period.key,
+            reward_period_key,
         )
         await self._send_warning_log(
             member.guild,
@@ -125,8 +125,6 @@ class AuthService:
         if before_has_role == after_has_role:
             return
         await self.set_current_period_authenticated(after.guild.id, after.id, after_has_role)
-        if after_has_role:
-            await self.apply_consecutive_auth_reward(after)
 
     async def sync_existing_auth_role_members(self, guild: discord.Guild) -> None:
         auth_role_id = int(self.config.get(guild.id, "auth_completed_role_id", "0") or 0)
@@ -139,4 +137,3 @@ class AuthService:
             if member.bot:
                 continue
             await self.set_current_period_authenticated(guild.id, member.id, True)
-            await self.apply_consecutive_auth_reward(member)
