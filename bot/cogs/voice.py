@@ -10,6 +10,23 @@ class VoiceCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    @staticmethod
+    def _build_channel_overwrites(category: discord.CategoryChannel, member: discord.Member) -> dict:
+        """카테고리 권한은 유지하고 소유자에게만 추가 권한을 부여"""
+        overwrites = {
+            target: discord.PermissionOverwrite.from_pair(*overwrite.pair())
+            for target, overwrite in category.overwrites.items()
+        }
+        owner_overwrite = overwrites.get(member, discord.PermissionOverwrite())
+        owner_overwrite.update(
+            view_channel=True,
+            connect=True,
+            manage_channels=True,
+            move_members=True,
+        )
+        overwrites[member] = owner_overwrite
+        return overwrites
+
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if member.bot:
@@ -34,14 +51,7 @@ class VoiceCog(commands.Cog):
 
         try:
             channel_name = sanitize_channel_name(member.display_name)
-            overwrites = {
-                member.guild.default_role: discord.PermissionOverwrite(
-                    connect=True,
-                    view_channel=True,
-                    manage_channels=True,
-                ),
-                member: discord.PermissionOverwrite(manage_channels=True, move_members=True),
-            }
+            overwrites = self._build_channel_overwrites(category, member)
             new_channel = await member.guild.create_voice_channel(
                 name=channel_name,
                 category=category,
