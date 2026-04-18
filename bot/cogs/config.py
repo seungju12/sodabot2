@@ -11,6 +11,7 @@ from bot.utils.discord_utils import is_admin
 class ConfigCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.onboarding_service = bot.onboarding_service
 
     async def _ensure_guild_context(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -47,6 +48,88 @@ class ConfigCog(commands.Cog):
             return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
         await self.bot.config_service.set(interaction.guild.id, "auth_completed_role_id", str(역할.id), interaction.user.id)
         await interaction.response.send_message(embed=EmbedService.config_result("auth_completed_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="권한받기채널", description="신규 입장자 초기 설정 채널 설정")
+    async def onboarding_channel(self, interaction: discord.Interaction, 채널: discord.TextChannel):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_channel_id", str(채널.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_channel_id", str(채널.id)), ephemeral=True)
+
+    @setting.command(name="남성역할", description="일반 입장 남성 선택 역할 설정")
+    async def onboarding_gender_male_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_gender_male_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_gender_male_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="여성역할", description="일반 입장 여성 선택 역할 설정")
+    async def onboarding_gender_female_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_gender_female_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_gender_female_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="롤역할", description="일반 입장 롤 선택 역할 설정")
+    async def onboarding_game_lol_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_game_lol_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_game_lol_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="오버워치역할", description="일반 입장 오버워치 선택 역할 설정")
+    async def onboarding_game_overwatch_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_game_overwatch_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_game_overwatch_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="배그역할", description="일반 입장 배틀그라운드 선택 역할 설정")
+    async def onboarding_game_battlegrounds_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_game_battlegrounds_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_game_battlegrounds_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="기타게임역할", description="일반 입장 기타 선택 역할 설정")
+    async def onboarding_game_other_role(self, interaction: discord.Interaction, 역할: discord.Role):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await self.bot.config_service.set(interaction.guild.id, "onboarding_game_other_role_id", str(역할.id), interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("onboarding_game_other_role_id", str(역할.id)), ephemeral=True)
+
+    @setting.command(name="권한안내전송", description="권한받기 채널에 온보딩 안내 임베드 전송")
+    async def send_onboarding_guide(self, interaction: discord.Interaction):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            channel = self.onboarding_service.get_onboarding_channel(interaction.guild)
+            if channel is None:
+                return await interaction.followup.send("권한받기 채널이 설정되지 않았거나 찾을 수 없습니다.", ephemeral=True)
+            await channel.send(
+                embed=self.onboarding_service.build_onboarding_entry_embed(interaction.guild),
+                view=self.bot.create_onboarding_entry_view(),
+            )
+            await interaction.followup.send("권한받기 채널에 안내 임베드를 전송했습니다.", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"온보딩 안내 전송 중 오류가 발생했습니다: {e}", ephemeral=True)
 
     @setting.command(name="지인역할", description="자동 경고 제외용 지인 역할 설정")
     async def acquaintance_role(self, interaction: discord.Interaction, 역할: discord.Role):
