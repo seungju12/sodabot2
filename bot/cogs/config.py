@@ -49,6 +49,20 @@ class ConfigCog(commands.Cog):
         await self.bot.config_service.set(interaction.guild.id, "auth_completed_role_id", str(역할.id), interaction.user.id)
         await interaction.response.send_message(embed=EmbedService.config_result("auth_completed_role_id", str(역할.id)), ephemeral=True)
 
+    @setting.command(name="인증스케줄링", description="자동 인증 안내/자동 경고 스케줄링 활성화 여부")
+    @app_commands.describe(값="ON 또는 OFF")
+    async def auth_schedule_enabled(self, interaction: discord.Interaction, 값: str):
+        if not await self._ensure_guild_context(interaction):
+            return
+        if not is_admin(interaction.user):
+            return await interaction.response.send_message("관리자만 사용할 수 있습니다.", ephemeral=True)
+        normalized = 값.strip().upper()
+        if normalized not in {"ON", "OFF"}:
+            return await interaction.response.send_message("ON 또는 OFF만 입력할 수 있습니다.", ephemeral=True)
+        value = normalized == "ON"
+        await self.bot.config_service.set(interaction.guild.id, "auth_schedule_enabled", value, interaction.user.id)
+        await interaction.response.send_message(embed=EmbedService.config_result("auth_schedule_enabled", str(value)), ephemeral=True)
+
     @setting.command(name="권한받기채널", description="신규 입장자 초기 설정 채널 설정")
     async def onboarding_channel(self, interaction: discord.Interaction, 채널: discord.TextChannel):
         if not await self._ensure_guild_context(interaction):

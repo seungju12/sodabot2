@@ -19,6 +19,9 @@ class SchedulerService:
         self.bot = bot
         self.scheduler = AsyncIOScheduler(timezone=KST)
 
+    def is_auth_schedule_enabled(self, guild_id: int) -> bool:
+        return bool(self.bot.config_service.get(guild_id, "auth_schedule_enabled", True))
+
     def _build_auto_warning_summary_embed(
         self,
         period_key: str,
@@ -73,6 +76,9 @@ class SchedulerService:
 
     async def run_auto_warning_for_all_guilds(self) -> None:
         for guild in self.bot.guilds:
+            if not self.is_auth_schedule_enabled(guild.id):
+                logger.info("auto warning skipped guild=%s reason=auth_schedule_disabled", guild.id)
+                continue
             try:
                 await self._run_auto_warning(guild)
             except Exception as e:
@@ -83,6 +89,9 @@ class SchedulerService:
 
     async def send_notice_for_all_guilds(self) -> None:
         for guild in self.bot.guilds:
+            if not self.is_auth_schedule_enabled(guild.id):
+                logger.info("notice skipped guild=%s reason=auth_schedule_disabled", guild.id)
+                continue
             try:
                 await self._send_notice(guild)
             except Exception as e:

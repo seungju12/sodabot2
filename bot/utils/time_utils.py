@@ -70,13 +70,13 @@ def get_notice_target_date(dt: datetime) -> bool:
     """알림을 보낼 시간인지 확인 (1회만 보내기 위해 bool 반환)
     
     기간 종료 3일 전에 알림:
-    - 일반 월: 12일(1차 15일 종료 -3), 말일-3(2차 말일 종료 -3)
-    - 2월: 11일(1차 14일 종료 -3), 말일-3(2차 말일 종료 -3)
+    - 일반 월: 12일 00:00(1차 15일 종료 3일 전), 말일-2 00:00(2차 말일 종료 3일 전)
+    - 2월: 11일 00:00(1차 14일 종료 3일 전), 말일-2 00:00(2차 말일 종료 3일 전)
     """
     dt = dt.astimezone(KST)
     last_day = monthrange(dt.year, dt.month)[1]
     if dt.month == 2:
-        target_days = [11, last_day - 3]  # 2월: 11일(14-3), 25/26일(28/29-3)
+        target_days = [11, last_day - 2]  # 2월: 11일 00:00, 26/27일 00:00
     else:
-        target_days = [12, last_day - 3]  # 일반 월: 12일(15-3), 말일-3
+        target_days = [12, last_day - 2]  # 일반 월: 12일 00:00, 28/29일 00:00
     return dt.day in target_days and dt.hour == 0 and dt.minute == 0
