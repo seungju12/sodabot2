@@ -9,6 +9,7 @@ ENV_SOURCE=""
 SKIP_UP=false
 DEFAULT_ENV_SOURCE="/tmp/.env"
 COMPOSE_FILE_NAME="docker-compose.yml"
+BUILDX_MIN_VERSION="0.17.0"
 
 compose_arch() {
   case "$(uname -m)" in
@@ -17,6 +18,20 @@ compose_arch() {
       ;;
     aarch64|arm64)
       printf '%s' 'aarch64'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+buildx_asset_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64)
+      printf '%s' 'amd64'
+      ;;
+    aarch64|arm64)
+      printf '%s' 'arm64'
       ;;
     *)
       return 1
@@ -132,6 +147,37 @@ download_compose_plugin() {
   exit 1
 }
 
+fetch_url() {
+  local url="$1"
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url"
+    return
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -qO- "$url"
+    return
+  fi
+
+  echo "URL을 조회할 도구가 없습니다." >&2
+  exit 1
+}
+
+latest_buildx_tag() {
+  fetch_url "https://api.github.com/repos/docker/buildx/releases/latest" | awk -F '"' '/"tag_name":/ { print $4; exit }'
+}
+
+version_ge() {
+  local left="$1"
+  local right="$2"
+  [[ "$(printf '%s\n%s\n' "$right" "$left" | sort -V | tail -n1)" == "$left" ]]
+}
+
+buildx_version() {
+  docker buildx version 2>/dev/null | awk '{print $2}' | sed 's/^v//'
+}
+
 install_compose_plugin() {
   if docker compose version >/dev/null 2>&1; then
     return
@@ -172,6 +218,58 @@ ensure_compose_available() {
     return
   fi
   echo "docker compose plugin 설치에 실패했습니다. 네트워크 또는 권한 상태를 확인해주세요." >&2
+  exit 1
+}
+
+install_buildx_plugin() {
+  local current_version
+
+  current_version="$(buildx_version || true)"
+  if [[ -n "$current_version" ]] && version_ge "$current_version" "$BUILDX_MIN_VERSION"; then
+    return
+  fi
+
+  ensure_downloader
+
+  if command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y docker-buildx-plugin >/dev/null 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y docker-buildx-plugin >/dev/null 2>&1 || true
+  elif command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -y >/dev/null 2>&1 || true
+    sudo apt-get install -y docker-buildx-plugin >/dev/null 2>&1 || true
+  fi
+
+  current_version="$(buildx_version || true)"
+  if [[ -n "$current_version" ]] && version_ge "$current_version" "$BUILDX_MIN_VERSION"; then
+    return
+  fi
+
+  local arch
+  local tag
+  if ! arch="$(buildx_asset_arch)"; then
+    echo "지원되지 않는 아키텍처입니다. Docker Buildx plugin을 수동 설치해주세요: $(uname -m)" >&2
+    exit 1
+  fi
+
+  tag="$(latest_buildx_tag || true)"
+  if [[ -z "$tag" ]]; then
+    echo "Docker Buildx 최신 릴리스 태그를 조회하지 못했습니다." >&2
+    exit 1
+  fi
+
+  sudo mkdir -p /usr/local/lib/docker/cli-plugins
+  download_compose_plugin \
+    "https://github.com/docker/buildx/releases/download/${tag}/buildx-${tag}.linux-${arch}" \
+    "/usr/local/lib/docker/cli-plugins/docker-buildx"
+  sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
+  current_version="$(buildx_version || true)"
+  if [[ -n "$current_version" ]] && version_ge "$current_version" "$BUILDX_MIN_VERSION"; then
+    return
+  fi
+
+  echo "docker buildx plugin 설치에 실패했습니다. 최소 버전 ${BUILDX_MIN_VERSION} 이상이 필요합니다." >&2
   exit 1
 }
 
@@ -273,6 +371,7 @@ compose_file_path() {
 
 install_docker_and_git
 ensure_compose_available
+install_buildx_plugin
 prepare_repo
 prepare_env
 
