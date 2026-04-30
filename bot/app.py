@@ -33,8 +33,11 @@ def build_bot() -> commands.Bot:
     intents.voice_states = True
     intents.message_content = False
 
-    bot = commands.Bot(command_prefix="!", intents=intents)
-    bot.db = Database(BASE_DIR / "bot" / "data" / "sodabot.db")
+    bot = commands.Bot(command_prefix=commands.when_mentioned, intents=intents)
+    database_target = os.getenv("DATABASE_URL")
+    if not database_target:
+        raise RuntimeError("DATABASE_URL is not set")
+    bot.db = Database(database_target)
     bot.config_service = ConfigService(bot.db, BASE_DIR / "config" / "default_config.json")
     bot.auth_service = AuthService(bot)
     bot.onboarding_service = OnboardingService(bot)

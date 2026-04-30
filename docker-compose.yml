@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sodabot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sodabot}
+      POSTGRES_USER: ${POSTGRES_USER:-sodabot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      TZ: ${TZ:-Asia/Seoul}
+      PGTZ: ${TZ:-Asia/Seoul}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sodabot} -d ${POSTGRES_DB:-sodabot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sodabot-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sodabot}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-sodabot}
+      TZ: ${TZ:-Asia/Seoul}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "main.py"]
+
+volumes:
+  postgres_data:

@@ -13,7 +13,14 @@ class VoiceOwnerService:
 
     async def add(self, guild_id: int, channel_id: int, owner_discord_id: int) -> None:
         await self.db.execute(
-            "INSERT OR REPLACE INTO voice_channels(channel_id, guild_id, owner_discord_id, created_at) VALUES (?, ?, ?, ?)",
+                        """
+                        INSERT INTO voice_channels(channel_id, guild_id, owner_discord_id, created_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(channel_id) DO UPDATE SET
+                            guild_id = excluded.guild_id,
+                            owner_discord_id = excluded.owner_discord_id,
+                            created_at = excluded.created_at
+                        """,
             (str(channel_id), str(guild_id), str(owner_discord_id), format_kst(now_kst())),
         )
 
